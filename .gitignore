@@ -1,3 +1,4 @@
 .ruby-version
 .ruby-gemset
 .sass-cache/
+_site/*
