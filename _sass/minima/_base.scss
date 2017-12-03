@@ -216,3 +216,31 @@ pre {
     padding-top: 5px;
   }
 }
+
+table {
+	display: block;
+	width: 100%;
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+
+	th {
+		font-weight: bold;
+    background-color: #eee;
+	}
+
+	th,
+	td {
+		padding: 0.5rem 1rem;
+		border: 1px solid #ddd;
+	}
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+td,
+th {
+  padding: 0;
+}
