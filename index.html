@@ -129,7 +129,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">1</span>
+          <span class="site-state-item-count">2</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -140,7 +140,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-count">3</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -169,6 +169,450 @@
 
 
     <div class="main-inner index posts-expand">
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/02/09/db-isolation-and-locks/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="桃子">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="桃子小站">
+      <meta itemprop="description" content="桃子的小站">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | 桃子小站">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2023/02/09/db-isolation-and-locks/" class="post-title-link" itemprop="url">数据库隔离级别与锁</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2023-02-09 08:53:39 / 修改时间：14:49:18" itemprop="dateCreated datePublished" datetime="2023-02-09T08:53:39+08:00">2023-02-09</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="隔离性"><a href="#隔离性" class="headerlink" title="隔离性"></a>隔离性</h1><p>关系数据库事务的隔离性（Isolation）是事务ACID特性之一，是指在不同的业务处理过程中，隔离性保证了各业务正在读、写的数据相互独立，不会彼此影响。数据库的隔离是通过加锁实现的，加锁会直接影响事务吞吐量，根据不同的加锁策略（比如加什么锁？什么时候解锁？等）对事务吞吐量影响是不同的。锁加得比较“重”吞吐量较低但隔离性好，加得较“轻”则吞吐量较高但隔离性差，故主流关系数据库都提供了不同的隔离级别供用户根据不同场景选择。</p>
+<p>本文主要讨论一下各个隔离级别下如何加锁的，或者反过来说，通过什么加锁策略可以实现各个隔离级别。</p>
+<h2 id="隔离级别定义"><a href="#隔离级别定义" class="headerlink" title="隔离级别定义"></a>隔离级别定义</h2><p>隔离级别通常有以下四种：（根据隔离级别从底到高)</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>脏读</th>
+<th>可重复读</th>
+<th>幻读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>读未提交（Read Uncommitted）</td>
+<td>可能</td>
+<td>可能</td>
+<td>可能</td>
+</tr>
+<tr>
+<td>读已提交（Read Committed）</td>
+<td>不可能</td>
+<td>可能</td>
+<td>可能</td>
+</tr>
+<tr>
+<td>可重复读（Repeatable Read）</td>
+<td>不可能</td>
+<td>不可能</td>
+<td>可能</td>
+</tr>
+<tr>
+<td>可串行化（Serializable）</td>
+<td>不可能</td>
+<td>不可能</td>
+<td>不可能</td>
+</tr>
+</tbody></table>
+<h2 id="锁定义"><a href="#锁定义" class="headerlink" title="锁定义"></a>锁定义</h2><ul>
+<li><p>写锁（Write Lock，也叫作排他锁，eXclusive Lock，简写为X-Lock）：如果数据有加写锁，就只有持有写锁的事务才能对数据进行写入操作，数据加持着写锁时，其他事务不能写入数据，也不能施加读锁。</p>
+</li>
+<li><p>读锁（Read Lock，也叫作共享锁，Shared Lock，简写为S-Lock）：多个事务可以对同一个数据添加多个读锁，数据被加上读锁后就不能再被加上写锁，所以其他事务不能对该数据进行写入，但仍然可以读取。对于持有读锁的事务，如果该数据只有它自己一个事务加了读锁，则允许直接将其升级为写锁，然后写入数据。</p>
+</li>
+<li><p>范围锁（Range Lock）：对于某个范围直接加排他锁，在这个范围内的数据不能被写入。</p>
+</li>
+</ul>
+<h1 id="隔离级别与加锁策略"><a href="#隔离级别与加锁策略" class="headerlink" title="隔离级别与加锁策略"></a>隔离级别与加锁策略</h1><blockquote>
+<p>注意：此处加锁策略只是理论，不同的数据库实际实现可能并不相同，并且可能存在别的类型的锁（比如innodb中的表锁）</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>写锁</th>
+<th>读锁</th>
+<th>范围锁</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>读未提交</td>
+<td>写数据加写锁持续到事务结束</td>
+<td>读数据不加读锁</td>
+<td>不加</td>
+</tr>
+<tr>
+<td>读已提交</td>
+<td>写数据加写锁持续到事务结束</td>
+<td>读数据加读锁, 但查询之后立即释放锁</td>
+<td>不加</td>
+</tr>
+<tr>
+<td>可重复读</td>
+<td>写数据加写锁持续到事务结束</td>
+<td>读数据加读锁持续到事务结束</td>
+<td>不加</td>
+</tr>
+<tr>
+<td>可串行化</td>
+<td>写数据加写锁持续到事务结束</td>
+<td>读数据加读锁持续到事务结束</td>
+<td>加范围锁</td>
+</tr>
+</tbody></table>
+<p>下面假设db中有一个表为: </p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> `<span class="keyword">user</span>` (</span><br><span class="line">  `id` <span class="type">int</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span> AUTO_INCREMENT,</span><br><span class="line">  `name` <span class="type">varchar</span>(<span class="number">100</span>) <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">  `age` <span class="type">int</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">  <span class="keyword">PRIMARY</span> KEY (`id`)</span><br><span class="line">) </span><br></pre></td></tr></table></figure>
+
+<p>表中数据为：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>age</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>张三</td>
+<td>15</td>
+</tr>
+<tr>
+<td>2</td>
+<td>李四</td>
+<td>10</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>6</td>
+</tr>
+</tbody></table>
+<h2 id="读未提交"><a href="#读未提交" class="headerlink" title="读未提交"></a>读未提交</h2><p>以上面给出的数据为例，结合加锁策略：<strong>写数据加写锁直到事务结束，读数据不加锁</strong>，我们分析一下为什么会出现脏读现象（脏读是指一个事务读取一另一个事务中未提交的数据)</p>
+<table>
+<thead>
+<tr>
+<th>时间点</th>
+<th>事务t1</th>
+<th>事务t2</th>
+<th>加锁情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;15</sub></td>
+<td></td>
+<td>无</td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td>begin</td>
+<td>无</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>update user set age&#x3D;12 where id&#x3D;1</td>
+<td>id&#x3D;1的记录加写锁</td>
+</tr>
+<tr>
+<td>4</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;12</sub></td>
+<td></td>
+<td>id&#x3D;1的记录加写锁</td>
+</tr>
+<tr>
+<td>5</td>
+<td></td>
+<td>rollback</td>
+<td>释放id&#x3D;1记录上的写锁</td>
+</tr>
+</tbody></table>
+<p>由于读未提交隔离级别读取数据时不需要加锁，故在时间点4事务t1可以读取到事务t2中未提交的数据(加了写锁并不代表数据不可以被读取)，在时间点5事务t2回滚了记录，事务t1中读取到数据是脏数据.</p>
+<h2 id="读已提交"><a href="#读已提交" class="headerlink" title="读已提交"></a>读已提交</h2><p>读已提交加锁策略为：<strong>写数据加写锁直到事务结束，读数据加读锁，但查询结束即释放读锁</strong>，此隔离级别可以避免脏读，但不可重复读。</p>
+<h3 id="如何避免脏读"><a href="#如何避免脏读" class="headerlink" title="如何避免脏读?"></a>如何避免脏读?</h3><table>
+<thead>
+<tr>
+<th>时间点</th>
+<th>事务t1</th>
+<th>事务t2</th>
+<th>加锁情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;15</sub></td>
+<td></td>
+<td>无</td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td>begin</td>
+<td>无</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>update user set age&#x3D;12 where id&#x3D;1</td>
+<td>t2事务在id&#x3D;1的记录加写锁</td>
+</tr>
+<tr>
+<td>4</td>
+<td>select age from user where id&#x3D;1<br/><sub>无法获取读锁，等待</sub></td>
+<td></td>
+<td>t2事务持有id&#x3D;1记录的写锁, 事务t1试图加读锁失败</td>
+</tr>
+<tr>
+<td>5</td>
+<td></td>
+<td>rollback</td>
+<td>t2释放id&#x3D;1记录上的写锁</td>
+</tr>
+<tr>
+<td>6</td>
+<td><sub>读取到age&#x3D;15</sub></td>
+<td></td>
+<td>t1获取id&#x3D;1记录上的读锁</td>
+</tr>
+</tbody></table>
+<p>由于读已提交读取数据必须要先获得读锁，在时间点4时，t1事务无法获取到读锁而阻塞，直到t2事务回滚t1获取到读锁才能读取到数据，避免了读取到t2事务中未提交的数据。</p>
+<h3 id="为什么会产生不可重复读"><a href="#为什么会产生不可重复读" class="headerlink" title="为什么会产生不可重复读?"></a>为什么会产生不可重复读?</h3><p>不可重复读是指在同一个事务中，对同一行数据的多次查询，得到了不同的结果。</p>
+<table>
+<thead>
+<tr>
+<th>时间点</th>
+<th>事务t1</th>
+<th>事务t2</th>
+<th>加锁情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>begin</td>
+<td></td>
+<td>无</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;15</sub></td>
+<td></td>
+<td>t1事务获得id&#x3D;1记录的读锁，读取完后释放</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>begin</td>
+<td>无</td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td>update user set age&#x3D;12 where id&#x3D;1</td>
+<td>t2事务在id&#x3D;1的记录加写锁</td>
+</tr>
+<tr>
+<td>5</td>
+<td></td>
+<td>commit</td>
+<td>释放t2在id&#x3D;1记录上的写锁</td>
+</tr>
+<tr>
+<td>6</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;12</sub></td>
+<td></td>
+<td>事务t1获得读锁读取数据后释放</td>
+</tr>
+<tr>
+<td>7</td>
+<td>commit</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>在时间点6，t1事务第二次读取id&#x3D;1记录的数据，发现查询的结果和第一次不一样。 读已提交隔离级别之所以为产生不可重复读，是因为读锁不是持续到整个事务结束，导致中途可能有别的事务获取到写锁变更数据。</p>
+<h2 id="可重复读"><a href="#可重复读" class="headerlink" title="可重复读"></a>可重复读</h2><p>可重复读隔离级别，顾名思义解决了不可重复读的问题：</p>
+<table>
+<thead>
+<tr>
+<th>时间点</th>
+<th>事务t1</th>
+<th>事务t2</th>
+<th>加锁情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>begin</td>
+<td></td>
+<td>无</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;15</sub></td>
+<td></td>
+<td>t1事务获得id&#x3D;1记录的读锁</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>begin</td>
+<td>无</td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td>update user set age&#x3D;12 where id&#x3D;1</td>
+<td>t2事务尝试id&#x3D;1的记录加写锁，因为t1事务持有写锁失败</td>
+</tr>
+<tr>
+<td>5</td>
+<td></td>
+<td>阻塞</td>
+<td></td>
+</tr>
+<tr>
+<td>6</td>
+<td>select age from user where id&#x3D;1<br/><sub>得到结果为 age&#x3D;15</sub></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>7</td>
+<td>commit</td>
+<td></td>
+<td>t1事务释放id&#x3D;1记录的读锁</td>
+</tr>
+<tr>
+<td>8</td>
+<td></td>
+<td>执行更新</td>
+<td>t2事务获取id&#x3D;1记录的写锁</td>
+</tr>
+<tr>
+<td>9</td>
+<td></td>
+<td>commit</td>
+<td>t2事务释放id&#x3D;1记录的写锁</td>
+</tr>
+</tbody></table>
+<p>可重复读隔离级别要求在读数据时加上写锁并且持续到事务结束，则上面执行过程中t2事务无法获取到写锁从而无法更改数据，保证t1事务在第二次读取时得到相同的数据。</p>
+<p>可重复读隔离级别依然存在幻读的问题：<strong>事务执行过程中，两个完全相同的范围查询得到了不同的结果集</strong></p>
+<table>
+<thead>
+<tr>
+<th>时间点</th>
+<th>事务t1</th>
+<th>事务t2</th>
+<th>加锁情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>begin</td>
+<td></td>
+<td>无</td>
+</tr>
+<tr>
+<td>2</td>
+<td>select count(*) from user where age&lt;&#x3D;10<br/><sub>得到结果为 2</sub></td>
+<td></td>
+<td>t1事务获得id&#x3D;2,3记录的读锁</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>begin</td>
+<td>无</td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td>insert into user(id, name, age) values (4, “alice”, 9);</td>
+<td>t2事务获得id&#x3D;4</td>
+</tr>
+<tr>
+<td>5</td>
+<td>select count(*) from user where age&lt;&#x3D;10 <br/><sub>得到结果为 3</sub></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>6</td>
+<td></td>
+<td>commit</td>
+<td>释放t2事务在id&#x3D;4记录上的锁</td>
+</tr>
+<tr>
+<td>7</td>
+<td>commit</td>
+<td></td>
+<td>释放t1事务获得的锁</td>
+</tr>
+</tbody></table>
+<p>由上面操作可见，t1事务在查询年龄小于等于10的用户数量时，只对id为2和3的记录加了读锁，所以无法阻止别的事务插入id&#x3D;4，并且年龄同样小于等于10的用户，随后t1事务再次查询时，发现数量多了一个。</p>
+<h2 id="可串行化"><a href="#可串行化" class="headerlink" title="可串行化"></a>可串行化</h2><p>可串行化在写入或者读取数据时分别加读锁和写锁并持续到事务结束，并且对范围操作增加范围锁，例如上文中查询年龄小于等于10的记录时，不再允许新插入年龄小于等于10的记录，解决了幻读的问题。</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
 
     
 
@@ -355,7 +799,7 @@ Returns: &#123;AsyncHook&#125; instance used for disabling and enabling hooks
 
 <div class="copyright">
   &copy; 
-  <span itemprop="copyrightYear">2022</span>
+  <span itemprop="copyrightYear">2023</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
