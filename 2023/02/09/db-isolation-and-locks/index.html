@@ -30,9 +30,14 @@
 <meta property="og:description" content="隔离性关系数据库事务的隔离性（Isolation）是事务ACID特性之一，是指在不同的业务处理过程中，隔离性保证了各业务正在读、写的数据相互独立，不会彼此影响。数据库的隔离是通过加锁实现的，加锁会直接影响事务吞吐量，根据不同的加锁策略（比如加什么锁？什么时候解锁？等）对事务吞吐量影响是不同的。锁加得比较“重”吞吐量较低但隔离性好，加得较“轻”则吞吐量较高但隔离性差，故主流关系数据库都提供了不同的隔">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2023-02-09T00:53:39.000Z">
-<meta property="article:modified_time" content="2023-02-09T06:49:18.681Z">
+<meta property="article:modified_time" content="2023-02-09T06:54:26.142Z">
 <meta property="article:author" content="桃子">
-<meta property="article:tag" content="db isolation locks 数据库 隔离级别 锁">
+<meta property="article:tag" content="db">
+<meta property="article:tag" content="isolation">
+<meta property="article:tag" content="locks">
+<meta property="article:tag" content="数据库">
+<meta property="article:tag" content="隔离级别">
+<meta property="article:tag" content="锁">
 <meta name="twitter:card" content="summary">
 
 
@@ -139,12 +144,12 @@
       </div>
       <div class="site-state-item site-state-categories">
           <a href="/categories/">
-        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-count">2</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-count">8</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -213,7 +218,16 @@
       <span class="post-meta-item-text">发表于</span>
       
 
-      <time title="创建时间：2023-02-09 08:53:39 / 修改时间：14:49:18" itemprop="dateCreated datePublished" datetime="2023-02-09T08:53:39+08:00">2023-02-09</time>
+      <time title="创建时间：2023-02-09 08:53:39 / 修改时间：14:54:26" itemprop="dateCreated datePublished" datetime="2023-02-09T08:53:39+08:00">2023-02-09</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
     </span>
 
   
@@ -610,7 +624,12 @@
 
     <footer class="post-footer">
           <div class="post-tags">
-              <a href="/tags/db-isolation-locks-%E6%95%B0%E6%8D%AE%E5%BA%93-%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB-%E9%94%81/" rel="tag"># db isolation locks 数据库 隔离级别 锁</a>
+              <a href="/tags/db/" rel="tag"># db</a>
+              <a href="/tags/isolation/" rel="tag"># isolation</a>
+              <a href="/tags/locks/" rel="tag"># locks</a>
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag"># 数据库</a>
+              <a href="/tags/%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/" rel="tag"># 隔离级别</a>
+              <a href="/tags/%E9%94%81/" rel="tag"># 锁</a>
           </div>
 
         
